@@ -28,6 +28,7 @@ app.use('/api', limiter);
 
 // ── Routes ──
 app.use('/api/auth', require('./routes/auth.routes'));
+app.use('/api/otp', require('./routes/otp.routes'));
 app.use('/api/rides', require('./routes/ride.routes'));
 
 // ── Health check ──
@@ -54,7 +55,7 @@ mongoose
   .connect(process.env.MONGO_URI)
   .then(async () => {
     console.log('MongoDB connected');
-    
+
     // Drop old root-level indexes to prevent E11000 duplicate key clashes
     try {
       const db = mongoose.connection.db;
