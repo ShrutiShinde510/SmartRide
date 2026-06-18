@@ -20,3 +20,6 @@ yarn-error.log*
 # OS files
 .DS_Store
 Thumbs.db
+
+# Google Cloud Service Account (Keep this secret!)
+firebase-service-account.json

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { apiGet, apiPut } from '../utils/api';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [fetchError, setFetchError] = useState('');
   const [isOnline, setIsOnline] = useState(true);
   const [activeSOS, setActiveSOS] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -14,20 +16,38 @@ export default function DashboardPage() {
   const [rates, setRates] = useState({ hourly: 150, km: 12 });
 
   useEffect(() => {
-    const userStr = localStorage.getItem('vaygo_user');
     const token = localStorage.getItem('vaygo_token');
-    
-    if (!token || !userStr) {
+    if (!token) {
       navigate('/login');
       return;
     }
-    
-    const parsedUser = JSON.parse(userStr);
-    setUser(parsedUser);
-    
-    const hourlyRate = parsedUser.pricing?.rate_per_hour || parsedUser.driver_experience?.hourly_charges || 150;
-    const kmRate = parsedUser.pricing?.rate_per_km || parsedUser.pricing?.rate_per_trip || parsedUser.driver_experience?.km_charges || 12;
-    setRates({ hourly: hourlyRate, km: kmRate });
+
+    // Load cached user immediately for fast render
+    const cached = localStorage.getItem('vaygo_user');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      setUser(parsed);
+      setRates({
+        hourly: parsed.pricing?.rate_per_hour || parsed.driver_experience?.hourly_charges || 150,
+        km: parsed.pricing?.rate_per_km || parsed.pricing?.rate_per_trip || parsed.driver_experience?.km_charges || 12,
+      });
+    }
+
+    // Fetch fresh data from server
+    apiGet('/api/auth/me').then(({ ok, data }) => {
+      if (ok && data.user) {
+        setUser(data.user);
+        localStorage.setItem('vaygo_user', JSON.stringify(data.user));
+        setRates({
+          hourly: data.user.pricing?.rate_per_hour || data.user.driver_experience?.hourly_charges || 150,
+          km: data.user.pricing?.rate_per_km || data.user.pricing?.rate_per_trip || data.user.driver_experience?.km_charges || 12,
+        });
+      } else if (!ok) {
+        setFetchError('Could not load profile. Showing cached data.');
+      }
+    }).catch(() => {
+      setFetchError('Network error. Showing cached data.');
+    });
   }, [navigate]);
 
   const handleLogout = () => {
@@ -56,9 +76,6 @@ export default function DashboardPage() {
 
   const handleSaveRates = async () => {
     try {
-      const token = localStorage.getItem('vaygo_token');
-      if (!token) throw new Error('Authorization token missing. Please log in.');
-      
       const body = {
         rate_per_hour: Number(rates.hourly)
       };
@@ -68,17 +85,8 @@ export default function DashboardPage() {
         body.rate_per_trip = Number(rates.km);
       }
 
-      const res = await fetch('/api/auth/update-rates', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(body)
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to update rates');
+      const { ok, data } = await apiPut('/api/auth/update-rates', body);
+      if (!ok) throw new Error(data.message || 'Failed to update rates');
 
       setUser(data.user);
       localStorage.setItem('vaygo_user', JSON.stringify(data.user));
@@ -165,6 +173,16 @@ export default function DashboardPage() {
 
         </div>
       </header>
+
+      {/* Fetch error banner */}
+      {fetchError && (
+        <div style={{ maxWidth: 1240, margin: '16px auto 0', padding: '0 24px' }}>
+          <div style={{ padding: '10px 16px', borderRadius: 8, background: 'rgba(255,165,0,0.08)', border: '1px solid rgba(255,165,0,0.25)', color: '#ffb84d', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>wifi_off</span>
+            {fetchError}
+          </div>
+        </div>
+      )}
 
       {/* Main Grid View */}
       <main style={{ flex: 1, maxWidth: 1240, width: '100%', margin: '0 auto', padding: '32px 24px' }}>

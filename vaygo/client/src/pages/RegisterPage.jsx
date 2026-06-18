@@ -73,7 +73,7 @@ export default function RegisterPage() {
       localStorage.setItem('vaygo_token', data.token);
       localStorage.setItem('vaygo_user', JSON.stringify(data.user));
 
-      // Redirect to OTP page
+      // Navigate to OTP page — OTP will be requested there automatically
       navigate('/otp');
     } catch (err) {
       setError(err.message);
@@ -221,7 +221,7 @@ export default function RegisterPage() {
               onMouseLeave={e => { e.currentTarget.style.opacity = loading ? '0.7' : '1'; }}
             >
               {loading ? (
-                <>Simulating Registration...</>
+                <>Registering...</>
               ) : (
                 <>
                   <span>Register</span>

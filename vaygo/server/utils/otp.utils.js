@@ -5,31 +5,35 @@ const generateOTP = () => {
     return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// ── Send OTP via Fast2SMS ─────────────────────────────────────────
+// ── Send OTP via Fast2SMS (Quick SMS route — no DLT needed) ──────
 const sendOTP = async (phone, otp) => {
     try {
         const response = await axios.get('https://www.fast2sms.com/dev/bulkV2', {
             params: {
-                authorization: process.env.FAST2SMS_API_KEY,
-                variables_values: otp,
-                route: 'otp',
+                message: `Your Vaygo OTP is ${otp}. Valid for ${process.env.OTP_EXPIRE_MINUTES || 10} minutes. Do not share with anyone.`,
+                language: 'english',
+                route: 'q',
                 numbers: phone,
             },
             headers: {
+                'authorization': process.env.FAST2SMS_API_KEY,
                 'cache-control': 'no-cache',
             },
         });
+
+        console.log('Fast2SMS response:', JSON.stringify(response.data));
 
         if (response.data.return === true) {
             console.log(`OTP sent to ${phone}`);
             return { success: true };
         } else {
-            console.error('Fast2SMS error:', response.data);
-            return { success: false, message: response.data.message };
+            console.error('Fast2SMS rejected:', response.data);
+            return { success: false, message: JSON.stringify(response.data.message || response.data) };
         }
     } catch (error) {
-        console.error('OTP send failed:', error.message);
-        return { success: false, message: 'Failed to send OTP' };
+        const errData = error.response?.data;
+        console.error('OTP send failed:', error.message, errData ? JSON.stringify(errData) : '');
+        return { success: false, message: errData?.message || 'Failed to send OTP' };
     }
 };
 

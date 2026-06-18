@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User.model');
+const User = require('../models/User.model');           // legacy
+const Passenger = require('../models/Passenger.model'); // dedicated passenger collection
 const PlannedDriver = require('../models/PlannedDriver.model');
 const FlexibleDriver = require('../models/FlexibleDriver.model');
 const OnDemandDriver = require('../models/OnDemandDriver.model');
@@ -18,7 +19,9 @@ module.exports = async (req, res, next) => {
     let user = null;
 
     if (role === 'passenger') {
-      user = await User.findById(decoded.id || decoded._id);
+      // Check Passenger collection first; fall back to legacy User collection
+      user = await Passenger.findById(decoded.id || decoded._id) ||
+             await User.findById(decoded.id || decoded._id);
     } else if (role === 'driver_planned') {
       user = await PlannedDriver.findById(decoded.id || decoded._id);
     } else if (role === 'driver_hire') {

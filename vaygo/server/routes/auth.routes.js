@@ -1,10 +1,12 @@
 const router = require('express').Router();
 const jwt = require('jsonwebtoken');
-const User = require('../models/User.model');
+const User = require('../models/User.model');           // legacy – kept for backward compat
+const Passenger = require('../models/Passenger.model'); // dedicated passenger collection
 const PlannedDriver = require('../models/PlannedDriver.model');
 const FlexibleDriver = require('../models/FlexibleDriver.model');
 const OnDemandDriver = require('../models/OnDemandDriver.model');
 const authMiddleware = require('../middleware/auth.middleware');
+const admin = require('../utils/firebase.admin');
 
 // Helper to generate JWT
 const generateToken = (user) => {
@@ -35,8 +37,9 @@ router.post('/register', async (req, res) => {
 
     const resolvedRole = (role || 'passenger').toLowerCase();
 
-    // Check if user already exists by phone across any model
-    const existsPhone = await User.findOne({ 'personal_info.phone': phone }) ||
+    // Check if phone already registered (Passenger uses flat 'phone', drivers use nested)
+    const existsPhone = await Passenger.findOne({ phone }) ||
+                        await User.findOne({ 'personal_info.phone': phone }) ||
                         await PlannedDriver.findOne({ 'personal_info.phone': phone }) ||
                         await FlexibleDriver.findOne({ 'personal_info.phone': phone }) ||
                         await OnDemandDriver.findOne({ 'personal_info.phone': phone });
@@ -44,9 +47,10 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Phone number already registered' });
     }
 
-    // Check if email already registered across any model (if provided)
+    // Check if email already registered (Passenger uses flat 'email')
     if (email) {
-      const existsEmail = await User.findOne({ 'personal_info.email': email }) ||
+      const existsEmail = await Passenger.findOne({ email }) ||
+                          await User.findOne({ 'personal_info.email': email }) ||
                           await PlannedDriver.findOne({ 'personal_info.email': email }) ||
                           await FlexibleDriver.findOne({ 'personal_info.email': email }) ||
                           await OnDemandDriver.findOne({ 'personal_info.email': email });
@@ -55,13 +59,41 @@ router.post('/register', async (req, res) => {
       }
     }
 
-    // Choose target model
-    let TargetModel = User;
+    // Choose target model — passengers go to dedicated 'passengers' collection
+    let TargetModel = Passenger; // default: passenger
     if (resolvedRole === 'driver_planned') TargetModel = PlannedDriver;
     else if (resolvedRole === 'driver_hire') TargetModel = FlexibleDriver;
     else if (resolvedRole === 'driver_on_demand') TargetModel = OnDemandDriver;
 
-    // Create base data
+    // ── PASSENGER: use flat minimal schema ──────────────────────────────
+    if (resolvedRole === 'passenger') {
+      const passengerData = {
+        full_name: full_name || name || '',
+        phone,
+        email: email || undefined,
+        password,
+        gender: (gender || 'other').toLowerCase(),
+        city: city || '',
+        emergency_contact: {
+          name:  emergency_contact?.name  || (trusted_contacts?.[0]?.name)  || '',
+          phone: emergency_contact?.phone || (trusted_contacts?.[0]?.phone) || ''
+        },
+        role:           'passenger',
+        account_status: 'active'
+      };
+
+      const newPassenger = new Passenger(passengerData);
+      await newPassenger.save();
+
+      const token = generateToken(newPassenger);
+      return res.status(201).json({
+        success: true,
+        token,
+        user: newPassenger.toSafeObject()
+      });
+    }
+
+    // ── DRIVERS: use nested schema (personal_info / kyc / account) ───────
     const baseData = {
       personal_info: {
         full_name: full_name || name || '',
@@ -83,8 +115,8 @@ router.post('/register', async (req, res) => {
       },
       account: {
         role: resolvedRole,
-        model_access: req.body.model_access || (resolvedRole === 'passenger' ? [1] : resolvedRole === 'driver_planned' ? [1] : resolvedRole === 'driver_hire' ? [2] : [3]),
-        account_status: (resolvedRole === 'passenger') ? 'active' : 'pending',
+        model_access: req.body.model_access || (resolvedRole === 'driver_planned' ? [1] : resolvedRole === 'driver_hire' ? [2] : [3]),
+        account_status: 'pending',
         safety_score: 100
       },
       language: language || 'en',
@@ -93,14 +125,6 @@ router.post('/register', async (req, res) => {
     };
 
     let userData = { ...baseData };
-
-    if (resolvedRole === 'passenger') {
-      if (trusted_contacts) {
-        userData.trusted_contacts = trusted_contacts;
-      } else if (emergency_contact) {
-        userData.trusted_contacts = [{ name: emergency_contact.name, phone: emergency_contact.phone }];
-      }
-    }
 
     if (resolvedRole === 'driver_planned') {
       userData.driving_licence = {
@@ -237,8 +261,9 @@ router.post('/login', async (req, res) => {
   try {
     const { phone, password } = req.body;
 
-    // Search across all models
-    let user = await User.findOne({ 'personal_info.phone': phone }) ||
+    // Passenger uses flat 'phone'; drivers use nested 'personal_info.phone'
+    let user = await Passenger.findOne({ phone }) ||
+               await User.findOne({ 'personal_info.phone': phone }) ||
                await PlannedDriver.findOne({ 'personal_info.phone': phone }) ||
                await FlexibleDriver.findOne({ 'personal_info.phone': phone }) ||
                await OnDemandDriver.findOne({ 'personal_info.phone': phone });
@@ -464,6 +489,54 @@ router.put('/update-rates', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: 'Server error updating rates' });
+  }
+});
+
+// @route   POST /api/auth/firebase-verify
+// @desc    Verify Firebase Phone Auth ID token → return Vaygo JWT
+router.post('/firebase-verify', async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) {
+      return res.status(400).json({ success: false, message: 'Firebase ID token required' });
+    }
+
+    // Verify token with Firebase Admin
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const firebasePhone = decoded.phone_number; // e.g. '+918767999872'
+
+    if (!firebasePhone) {
+      return res.status(400).json({ success: false, message: 'Phone number not found in token' });
+    }
+
+    // Strip +91 to match how we store phone in MongoDB
+    const phone = firebasePhone.replace(/^\+91/, '').replace(/\s/g, '');
+
+    // Passenger uses flat 'phone'; drivers use nested 'personal_info.phone'
+    const user = await Passenger.findOne({ phone }) ||
+                  await User.findOne({ 'personal_info.phone': phone }) ||
+                  await PlannedDriver.findOne({ 'personal_info.phone': phone }) ||
+                  await FlexibleDriver.findOne({ 'personal_info.phone': phone }) ||
+                  await OnDemandDriver.findOne({ 'personal_info.phone': phone });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found. Please register first.' });
+    }
+
+    // Issue Vaygo JWT
+    const role = user.account?.role || user.role || 'passenger';
+    const token = jwt.sign({ id: user._id, role }, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRE || '15m',
+    });
+
+    res.json({
+      success: true,
+      token,
+      user: user.toSafeObject(),
+    });
+  } catch (err) {
+    console.error('Firebase verify error:', err.message);
+    res.status(401).json({ success: false, message: 'Invalid or expired Firebase token' });
   }
 });
 

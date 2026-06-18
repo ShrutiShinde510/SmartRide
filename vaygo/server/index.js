@@ -56,20 +56,33 @@ mongoose
   .then(async () => {
     console.log('MongoDB connected');
 
-    // Drop old root-level indexes to prevent E11000 duplicate key clashes
+    // Drop stale indexes to prevent E11000 duplicate key clashes after schema changes
     try {
       const db = mongoose.connection.db;
-      const collections = await db.listCollections({ name: 'users' }).toArray();
-      if (collections.length > 0) {
-        const usersColl = db.collection('users');
-        const indexes = await usersColl.indexes();
-        if (indexes.some(idx => idx.name === 'phone_1')) {
-          await usersColl.dropIndex('phone_1');
-          console.log('Dropped old root-level phone_1 index');
+
+      // Clean up legacy indexes on 'users' collection
+      const usersColl = (await db.listCollections({ name: 'users' }).toArray()).length > 0
+        ? db.collection('users') : null;
+      if (usersColl) {
+        const userIdxs = await usersColl.indexes();
+        for (const name of ['phone_1', 'email_1', 'username_1']) {
+          if (userIdxs.some(i => i.name === name)) {
+            await usersColl.dropIndex(name);
+            console.log(`Dropped old users index: ${name}`);
+          }
         }
-        if (indexes.some(idx => idx.name === 'email_1')) {
-          await usersColl.dropIndex('email_1');
-          console.log('Dropped old root-level email_1 index');
+      }
+
+      // Clean up stale nested-schema indexes on 'passengers' collection
+      const passColl = (await db.listCollections({ name: 'passengers' }).toArray()).length > 0
+        ? db.collection('passengers') : null;
+      if (passColl) {
+        const passIdxs = await passColl.indexes();
+        for (const name of ['personal_info.phone_1', 'personal_info.email_1']) {
+          if (passIdxs.some(i => i.name === name)) {
+            await passColl.dropIndex(name);
+            console.log(`Dropped stale passengers index: ${name}`);
+          }
         }
       }
     } catch (err) {
@@ -78,9 +91,18 @@ mongoose
 
     app.listen(process.env.PORT, () => {
       console.log(`Vaygo server running on http://localhost:${process.env.PORT}`);
+    }).on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${process.env.PORT} is already in use.`);
+        console.error(`   Run: Get-NetTCPConnection -LocalPort ${process.env.PORT} | Select-Object -ExpandProperty OwningProcess | ForEach-Object { taskkill /PID $_ /F }`);
+        process.exit(1);
+      } else {
+        throw err;
+      }
     });
   })
   .catch((err) => {
     console.error('MongoDB connection failed:', err.message);
     process.exit(1);
   });
+

@@ -25,10 +25,21 @@ router.post('/send', async (req, res) => {
         // Store OTP
         storeOTP(cleanPhone, otp);
 
-        // Send OTP via Fast2SMS
+        // Send OTP via Fast2SMS (non-fatal — OTP is stored regardless)
         const result = await sendOTP(cleanPhone, otp);
 
         if (!result.success) {
+            console.warn(`SMS delivery failed for ${cleanPhone}: ${result.message}`);
+            // In dev mode: return 200 with OTP hint so flow is not blocked
+            if (process.env.NODE_ENV === 'development') {
+                return res.status(200).json({
+                    success: true,
+                    message: `OTP generated (SMS failed in dev). Check server logs.`,
+                    otp,       // dev hint shown in browser
+                    smsError: result.message,
+                });
+            }
+            // In production, surface the error
             return res.status(500).json({ success: false, message: result.message || 'Failed to send OTP.' });
         }
 
@@ -87,6 +98,15 @@ router.post('/resend', async (req, res) => {
         const result = await sendOTP(cleanPhone, otp);
 
         if (!result.success) {
+            console.warn(`SMS resend failed for ${cleanPhone}: ${result.message}`);
+            if (process.env.NODE_ENV === 'development') {
+                return res.status(200).json({
+                    success: true,
+                    message: `New OTP generated (SMS failed in dev). Check server logs.`,
+                    otp,
+                    smsError: result.message,
+                });
+            }
             return res.status(500).json({ success: false, message: 'Failed to resend OTP.' });
         }
 
