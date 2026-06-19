@@ -40,8 +40,13 @@ export default function LoginPage() {
       localStorage.setItem('vaygo_token', data.token);
       localStorage.setItem('vaygo_user', JSON.stringify(data.user));
 
-      // Redirect to Dashboard
-      navigate('/dashboard');
+      // Redirect based on role
+      const role = (data.user?.account?.role || data.user?.role || 'passenger').toLowerCase();
+      if (role === 'passenger') {
+        navigate('/dashboard');
+      } else {
+        navigate('/driver-dashboard');
+      }
     } catch (err) {
       setError(err.message);
     } finally {
