@@ -3,17 +3,34 @@ import { useNavigate } from 'react-router-dom';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
-  const [prefs, setPrefs] = useState({
-    language:      'en',
-    theme:         'dark',
-    notifications: true,
-    sms_alerts:    true,
-    email_updates: false,
-    location_share:false,
-    two_factor:    false,
+  // Load initial from localStorage
+  const [prefs, setPrefs] = useState(() => {
+    const saved = localStorage.getItem('vaygo_settings');
+    return saved ? JSON.parse(saved) : {
+      language:      'en',
+      theme:         'dark',
+      notifications: true,
+      sms_alerts:    true,
+      email_updates: false,
+      location_share:false,
+      two_factor:    false,
+    };
   });
 
-  const toggle = (key) => setPrefs(p => ({ ...p, [key]: !p[key] }));
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
+
+  const toggle = (key) => {
+    const newPrefs = { ...prefs, [key]: !prefs[key] };
+    setPrefs(newPrefs);
+    localStorage.setItem('vaygo_settings', JSON.stringify(newPrefs));
+  };
+
+  const handleLanguageChange = (e) => {
+    const newPrefs = { ...prefs, language: e.target.value };
+    setPrefs(newPrefs);
+    localStorage.setItem('vaygo_settings', JSON.stringify(newPrefs));
+  };
 
   const Toggle = ({ val, onToggle }) => (
     <button onClick={onToggle}
@@ -27,7 +44,7 @@ export default function SettingsPage() {
       title: 'Preferences',
       items: [
         { label: 'Language', sub: 'App display language', icon: 'translate', node: (
-          <select value={prefs.language} onChange={e => setPrefs(p => ({ ...p, language: e.target.value }))}
+          <select value={prefs.language} onChange={handleLanguageChange}
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 7, color: '#d3e4fe', fontSize: 12, padding: '5px 8px', outline: 'none', colorScheme: 'dark' }}>
             <option value="en">English</option>
             <option value="hi">हिंदी</option>
@@ -49,9 +66,32 @@ export default function SettingsPage() {
     {
       title: 'Account',
       items: [
-        { label: 'Change Password', sub: 'Update your login password', icon: 'lock_reset', action: () => alert('Change password flow') },
-        { label: 'Download My Data', sub: 'Export all your ride & account data', icon: 'download', action: () => alert('Data export requested') },
-        { label: 'Delete Account', sub: 'Permanently remove your account', icon: 'delete_forever', danger: true, action: () => alert('Please contact support to delete your account.') },
+        { label: 'Change Password', sub: 'Update your login password', icon: 'lock_reset', action: () => {
+            setShowPasswordModal(true);
+        }},
+        { label: 'Download My Data', sub: 'Export all your ride & account data', icon: 'download', action: () => {
+            const userData = JSON.parse(localStorage.getItem('vaygo_user') || '{}');
+            const fullData = {
+              account_details: userData,
+              preferences: prefs,
+              export_date: new Date().toISOString()
+            };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fullData, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "vaygo_complete_account_data.json");
+            document.body.appendChild(downloadAnchorNode); // required for firefox
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }},
+        { label: 'Delete Account', sub: 'Permanently remove your account', icon: 'delete_forever', danger: true, action: () => {
+            if (window.confirm("Are you sure you want to permanently delete your account? This action cannot be undone.")) {
+              localStorage.removeItem('vaygo_token');
+              localStorage.removeItem('vaygo_user');
+              alert("Account deleted. Redirecting...");
+              window.location.href = '/';
+            }
+        }},
       ]
     }
   ];
@@ -94,6 +134,66 @@ export default function SettingsPage() {
       </button>
 
       <div style={{ textAlign: 'center', marginTop: 20, fontSize: 11, color: 'rgba(211,228,254,0.20)' }}>Vaygo v2.0 · © 2025 All rights reserved</div>
+
+      {/* Password Change Modal */}
+      {showPasswordModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, width: '100%', maxWidth: 400, padding: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
+            <h3 style={{ margin: '0 0 8px 0', color: '#d3e4fe', fontSize: 20 }}>Change Password</h3>
+            <p style={{ margin: '0 0 20px 0', color: 'rgba(211,228,254,0.5)', fontSize: 13 }}>Create a new password that is at least 6 characters long.</p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'rgba(211,228,254,0.7)', marginBottom: 6, fontWeight: 600 }}>Current Password</label>
+                <input type="password" placeholder="Enter current password" value={passwords.current} onChange={e => setPasswords({...passwords, current: e.target.value})}
+                  style={{ width: '100%', padding: '12px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#fff', fontSize: 14, outline: 'none' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'rgba(211,228,254,0.7)', marginBottom: 6, fontWeight: 600 }}>New Password</label>
+                <input type="password" placeholder="Enter new password" value={passwords.new} onChange={e => setPasswords({...passwords, new: e.target.value})}
+                  style={{ width: '100%', padding: '12px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#fff', fontSize: 14, outline: 'none' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'rgba(211,228,254,0.7)', marginBottom: 6, fontWeight: 600 }}>Confirm New Password</label>
+                <input type="password" placeholder="Confirm new password" value={passwords.confirm} onChange={e => setPasswords({...passwords, confirm: e.target.value})}
+                  style={{ width: '100%', padding: '12px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#fff', fontSize: 14, outline: 'none' }} />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, marginTop: 28 }}>
+              <button onClick={() => { setShowPasswordModal(false); setPasswords({current: '', new: '', confirm: ''}); }}
+                style={{ flex: 1, padding: 12, borderRadius: 10, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#d3e4fe', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={async () => {
+                if(!passwords.current || !passwords.new || !passwords.confirm) return alert('Please fill all fields');
+                if(passwords.new !== passwords.confirm) return alert('New passwords do not match');
+                
+                try {
+                  const res = await fetch('/api/auth/change-password', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${localStorage.getItem('vaygo_token')}`
+                    },
+                    body: JSON.stringify({ currentPassword: passwords.current, newPassword: passwords.new })
+                  });
+                  const data = await res.json();
+                  
+                  if (data.success) {
+                    alert('Password successfully updated!');
+                    setShowPasswordModal(false);
+                    setPasswords({current: '', new: '', confirm: ''});
+                  } else {
+                    alert(data.message || 'Failed to update password');
+                  }
+                } catch (err) {
+                  alert('Network error, please try again');
+                }
+              }}
+                style={{ flex: 1, padding: 12, borderRadius: 10, background: '#00dbe7', border: 'none', color: '#002022', fontWeight: 700, cursor: 'pointer' }}>Save Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -30,7 +30,8 @@ app.use('/api', limiter);
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/otp', require('./routes/otp.routes'));
 app.use('/api/rides', require('./routes/ride.routes'));
-
+app.use('/api/bookings', require('./routes/booking.routes'));
+app.use('/api/messages', require('./routes/message.routes'));
 // ── Health check ──
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'Vaygo server running', timestamp: new Date() });

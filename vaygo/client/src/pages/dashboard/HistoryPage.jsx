@@ -1,5 +1,5 @@
-import { useState } from 'react';
-
+import { useState, useEffect } from 'react';
+import { apiGet } from '../../utils/api';
 
 const FILTER_OPTIONS = ['All', 'Planned Trip', 'Flexible Hire', 'Driver on Demand'];
 
@@ -7,6 +7,30 @@ export default function HistoryPage() {
   const [rides, setRides] = useState([]);
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchHistory() {
+      const { ok, data } = await apiGet('/api/bookings/my-bookings');
+      if (ok && data.success) {
+        const completedRides = data.bookings
+          .filter(b => b.paymentStatus === 'Completed')
+          .map(b => ({
+            from: b.rideId?.from?.split(',')[0] || 'Unknown',
+            to: b.rideId?.to?.split(',')[0] || 'Unknown',
+            driver: b.rideId?.driverId?.personal_info?.full_name || 'Driver',
+            type: 'Planned Trip',
+            km: 3.2, // Default mock distance if not provided
+            date: b.rideId ? new Date(b.rideId.date).toLocaleDateString() : 'Unknown Date',
+            fare: '₹' + b.totalFare,
+            rating: 5
+          }));
+        setRides(completedRides);
+      }
+      setLoading(false);
+    }
+    fetchHistory();
+  }, []);
 
   const filtered = rides.filter(r => {
     const matchType = filter === 'All' || r.type === filter;

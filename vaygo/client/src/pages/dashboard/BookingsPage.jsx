@@ -1,15 +1,59 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { apiGet } from '../../utils/api';
+import { useNavigate } from 'react-router-dom';
 
 const TABS = ['Active', 'Upcoming', 'Completed'];
-
-
 
 const STATUS_COLOR = { Active: '#22d3a0', Upcoming: '#fbbf24', Completed: 'rgba(211,228,254,0.35)' };
 const TYPE_ICON = { 'Planned Trip': 'schedule', 'Flexible Hire': 'directions_car', 'Driver on Demand': 'person_pin' };
 
 export default function BookingsPage() {
-  const [tab, setTab] = useState('Active');
+  const [tab, setTab] = useState('Upcoming');
   const [data, setData] = useState({ Active: [], Upcoming: [], Completed: [] });
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    async function fetchBookings() {
+      const { ok, data: resData } = await apiGet('/api/bookings/my-bookings');
+      if (ok && resData.success) {
+        const bookings = resData.bookings;
+        const upcoming = [];
+        const completed = [];
+        
+        bookings.forEach(b => {
+          const mapped = {
+            id: b._id,
+            rideId: b.rideId?._id,
+            route: b.rideId ? `${b.rideId.from?.split(',')[0] || 'Unknown'} → ${b.rideId.to?.split(',')[0] || 'Unknown'}` : 'Unknown Route',
+            driver: b.rideId?.driverId?.personal_info?.full_name || 'Driver',
+            type: 'Planned Trip',
+            time: b.rideId ? new Date(b.rideId.date).toLocaleDateString() + ' ' + b.rideId.time : 'Unknown Time',
+            fare: '₹' + b.totalFare,
+            eta: '...', // Mocked ETA
+            paymentStatus: b.paymentStatus,
+            boardingStatus: b.boardingStatus
+          };
+          
+          if (b.boardingStatus === 'Cancelled' || b.boardingStatus === 'Completed') {
+            completed.push(mapped);
+          } else if (b.paymentStatus === 'Completed' || b.paymentStatus === 'Pending') {
+            upcoming.push(mapped);
+          } else {
+            completed.push(mapped);
+          }
+        });
+
+        setData({ Active: [], Upcoming: upcoming, Completed: completed });
+      }
+      setLoading(false);
+    }
+    fetchBookings();
+  }, []);
+
+  if (loading) {
+    return <div style={{ textAlign: 'center', padding: '60px 0', color: 'rgba(211,228,254,0.5)' }}>Loading your bookings...</div>;
+  }
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '28px 20px' }}>
@@ -60,17 +104,37 @@ export default function BookingsPage() {
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
                   <div style={{ fontSize: 17, fontWeight: 800, color: '#00dbe7', marginBottom: 8 }}>{b.fare}</div>
                   {tab === 'Active' && (
-                    <button style={{ padding: '6px 12px', background: 'rgba(0,219,231,0.08)', border: '1px solid rgba(0,219,231,0.20)', borderRadius: 7, color: '#00dbe7', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                    <button onClick={() => navigate(`/dashboard/booking/${b.id}/track`)} style={{ padding: '6px 12px', background: 'rgba(0,219,231,0.08)', border: '1px solid rgba(0,219,231,0.20)', borderRadius: 7, color: '#00dbe7', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                       Track
                     </button>
                   )}
                   {tab === 'Upcoming' && (
-                    <button style={{ padding: '6px 12px', background: 'rgba(255,77,77,0.06)', border: '1px solid rgba(255,77,77,0.15)', borderRadius: 7, color: 'rgba(255,130,130,0.80)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                    <button onClick={async () => {
+                      if(window.confirm('Are you sure you want to cancel this booking?')) {
+                        const { ok } = await apiGet(`/api/bookings/${b.id}`); // This is just to ensure imports if needed, actually we need apiPut
+                        const { ok: putOk } = await fetch(`/api/bookings/${b.id}/status`, {
+                          method: 'PUT',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('vaygo_token')}`
+                          },
+                          body: JSON.stringify({ status: 'Cancelled' })
+                        });
+                        if (putOk) {
+                          alert('Booking cancelled successfully');
+                          window.location.reload();
+                        } else {
+                          alert('Failed to cancel booking');
+                        }
+                      }
+                    }} style={{ padding: '6px 12px', background: 'rgba(255,77,77,0.06)', border: '1px solid rgba(255,77,77,0.15)', borderRadius: 7, color: 'rgba(255,130,130,0.80)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                       Cancel
                     </button>
                   )}
                   {tab === 'Completed' && (
-                    <div style={{ fontSize: 10, color: '#22d3a0', fontWeight: 700 }}>✓ Done</div>
+                    <div style={{ fontSize: 10, color: b.boardingStatus === 'Cancelled' ? '#ef4444' : '#22d3a0', fontWeight: 700 }}>
+                      {b.boardingStatus === 'Cancelled' ? '✕ Cancelled' : '✓ Done'}
+                    </div>
                   )}
                 </div>
               </div>

@@ -4,9 +4,12 @@ import { useState } from 'react';
 
 export default function WalletPage() {
   const [adding, setAdding] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
   const [amount, setAmount] = useState('');
-  const [transactions, setTransactions] = useState([]);
-  const balance = transactions.reduce((sum, t) => sum + t.amount, 0);
+  const [transactions, setTransactions] = useState([
+    { type: 'credit', amount: 450, label: 'Promotional Bonus', note: 'Vaygo Welcome', date: new Date().toLocaleDateString() }
+  ]);
+  const balance = transactions.reduce((sum, t) => sum + (t.type === 'credit' ? t.amount : -t.amount), 0);
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '28px 20px' }}>
@@ -22,11 +25,12 @@ export default function WalletPage() {
         </div>
         <div style={{ fontSize: 12, color: 'rgba(211,228,254,0.40)', marginBottom: 24 }}>Available to use on rides</div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={() => setAdding(true)}
+          <button onClick={() => { setAdding(true); setWithdrawing(false); setAmount(''); }}
             style={{ padding: '10px 22px', background: 'linear-gradient(135deg,#00dbe7,#00f1fe)', color: '#002022', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span> Add Money
           </button>
-          <button style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.06)', color: 'rgba(211,228,254,0.70)', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => { setWithdrawing(true); setAdding(false); setAmount(''); }}
+            style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.06)', color: 'rgba(211,228,254,0.70)', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <span className="material-symbols-outlined" style={{ fontSize: 16 }}>arrow_outward</span> Withdraw
           </button>
         </div>
@@ -47,9 +51,48 @@ export default function WalletPage() {
           <div style={{ display: 'flex', gap: 10 }}>
             <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="Custom amount (₹)" type="number"
               style={{ flex: 1, padding: '10px 14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 10, color: '#d3e4fe', fontSize: 13, outline: 'none' }} />
-            <button onClick={() => { if (amount) { alert(`₹${amount} added via UPI`); setAdding(false); setAmount(''); } }}
+            <button onClick={() => { 
+                if (amount && Number(amount) > 0) { 
+                  setTransactions([{ type: 'credit', amount: Number(amount), label: 'Added to Wallet', note: 'UPI Transfer', date: new Date().toLocaleDateString() }, ...transactions]);
+                  setAdding(false); 
+                  setAmount(''); 
+                } 
+              }}
               style={{ padding: '10px 20px', background: 'linear-gradient(135deg,#00dbe7,#00f1fe)', color: '#002022', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Pay via UPI</button>
             <button onClick={() => setAdding(false)}
+              style={{ padding: '10px 16px', background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, color: 'rgba(211,228,254,0.50)', cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Withdraw Money Modal */}
+      {withdrawing && (
+        <div style={{ marginBottom: 20, padding: 20, borderRadius: 16, background: 'rgba(255,107,107,0.05)', border: '1px solid rgba(255,107,107,0.18)' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#d3e4fe', marginBottom: 14 }}>Withdraw to Bank Account</div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            {[100, 200, 500, 1000].map(a => (
+              <button key={a} onClick={() => setAmount(String(a))}
+                style={{ padding: '8px 14px', borderRadius: 8, background: amount === String(a) ? 'rgba(255,107,107,0.10)' : 'rgba(255,255,255,0.04)', border: amount === String(a) ? '1px solid rgba(255,107,107,0.25)' : '1px solid rgba(255,255,255,0.08)', color: amount === String(a) ? '#ff6b6b' : 'rgba(211,228,254,0.55)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                ₹{a}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="Withdraw amount (₹)" type="number" max={balance}
+              style={{ flex: 1, padding: '10px 14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 10, color: '#d3e4fe', fontSize: 13, outline: 'none' }} />
+            <button onClick={() => { 
+                if (amount && Number(amount) > 0) { 
+                  if (Number(amount) > balance) {
+                    alert('Insufficient balance to withdraw this amount!');
+                    return;
+                  }
+                  setTransactions([{ type: 'debit', amount: Number(amount), label: 'Withdrawal', note: 'To Bank Account', date: new Date().toLocaleDateString() }, ...transactions]);
+                  setWithdrawing(false); 
+                  setAmount(''); 
+                } 
+              }}
+              style={{ padding: '10px 20px', background: 'rgba(255,107,107,0.1)', color: '#ff6b6b', border: '1px solid rgba(255,107,107,0.3)', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Withdraw to Bank</button>
+            <button onClick={() => setWithdrawing(false)}
               style={{ padding: '10px 16px', background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, color: 'rgba(211,228,254,0.50)', cursor: 'pointer', fontSize: 13 }}>Cancel</button>
           </div>
         </div>

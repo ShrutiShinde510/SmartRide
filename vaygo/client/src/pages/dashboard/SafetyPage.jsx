@@ -76,7 +76,16 @@ export default function SafetyPage() {
                 <div style={{ fontSize: 11, color: 'rgba(211,228,254,0.40)', marginTop: 2 }}>{c.phone || 'Not set'}</div>
               </div>
             </div>
-            <button style={{ padding: '5px 12px', background: 'rgba(0,219,231,0.07)', border: '1px solid rgba(0,219,231,0.15)', borderRadius: 7, color: '#00dbe7', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Call</button>
+            <a href={c.phone ? `tel:${c.phone}` : '#'}
+              onClick={(e) => {
+                if (!c.phone) {
+                  e.preventDefault();
+                  alert('Emergency contact phone number not set');
+                }
+              }}
+              style={{ padding: '5px 12px', background: 'rgba(0,219,231,0.07)', border: '1px solid rgba(0,219,231,0.15)', borderRadius: 7, color: '#00dbe7', fontSize: 11, fontWeight: 700, cursor: 'pointer', textDecoration: 'none' }}>
+              Call
+            </a>
           </div>
         ))}
       </div>

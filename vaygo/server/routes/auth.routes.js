@@ -540,4 +540,60 @@ router.post('/firebase-verify', async (req, res) => {
   }
 });
 
+// @route   POST /api/auth/change-password
+// @desc    Change user password
+router.post('/change-password', authMiddleware, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const user = req.user;
+
+    // Match password
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Incorrect current password' });
+    }
+
+    // Set new password (the mongoose pre-save hook will hash it)
+    if (user.role === 'passenger' || !user.personal_info) {
+       user.password = newPassword; 
+    } else {
+       user.personal_info.password = newPassword; 
+    }
+    
+    await user.save();
+    res.json({ success: true, message: 'Password updated successfully' });
+  } catch (err) {
+    console.error('Change password error:', err);
+    res.status(500).json({ success: false, message: 'Server error during password change' });
+  }
+});
+
+// @route   POST /api/auth/update-profile
+// @desc    Update user profile details
+router.post('/update-profile', authMiddleware, async (req, res) => {
+  try {
+    const { full_name, email, city, gender } = req.body;
+    const user = req.user;
+
+    // Determine role and where the data is stored
+    if (user.role === 'passenger' || !user.personal_info) {
+      if (full_name !== undefined) user.full_name = full_name;
+      if (email !== undefined) user.email = email;
+      if (city !== undefined) user.city = city;
+      if (gender !== undefined) user.gender = gender;
+    } else {
+      if (full_name !== undefined) user.personal_info.full_name = full_name;
+      if (email !== undefined) user.personal_info.email = email;
+      if (city !== undefined) user.city = city;
+      if (gender !== undefined) user.personal_info.gender = gender;
+    }
+    
+    await user.save();
+    res.json({ success: true, message: 'Profile updated successfully', user: user.toSafeObject() });
+  } catch (err) {
+    console.error('Update profile error:', err);
+    res.status(500).json({ success: false, message: 'Server error during profile update' });
+  }
+});
+
 module.exports = router;

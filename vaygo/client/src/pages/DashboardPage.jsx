@@ -11,6 +11,7 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [rideType, setRideType] = useState('planned'); // planned, hire, driver
   const [rideBooked, setRideBooked] = useState(false);
+  const [realRides, setRealRides] = useState([]);
 
   // Experience and charges update state
   const [rates, setRates] = useState({ hourly: 150, km: 12 });
@@ -48,6 +49,14 @@ export default function DashboardPage() {
     }).catch(() => {
       setFetchError('Network error. Showing cached data.');
     });
+
+    // Fetch real driver rides if token exists
+    apiGet('/api/rides/driver').then(({ ok, data }) => {
+      if (ok && data.success) {
+        setRealRides(data.rides.slice(0, 5)); // show top 5
+      }
+    });
+
   }, [navigate]);
 
   const handleLogout = () => {
@@ -292,6 +301,23 @@ export default function DashboardPage() {
             {/* Left section: Ride requests & Duty Toggle */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               
+              {/* Quick Actions for Drivers */}
+              <div style={{ background: 'linear-gradient(135deg, rgba(0,219,231,0.1) 0%, rgba(0,100,120,0.05) 100%)', border: '1px solid rgba(0,219,231,0.2)', borderRadius: 16, padding: 20 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: '#d3e4fe', marginBottom: 16 }}>Quick Actions</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <button onClick={() => navigate('/driver-dashboard/create-ride')}
+                    style={{ padding: '14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: '#d3e4fe', fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.2s' }}>
+                    <span className="material-symbols-outlined" style={{ color: '#00dbe7' }}>add_circle</span>
+                    Post a Ride
+                  </button>
+                  <button onClick={() => navigate('/driver-dashboard/rides')}
+                    style={{ padding: '14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: '#d3e4fe', fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.2s' }}>
+                    <span className="material-symbols-outlined" style={{ color: '#00dbe7' }}>directions_car</span>
+                    Manage My Rides
+                  </button>
+                </div>
+              </div>
+
               {/* Go Online/Offline header */}
               <div style={{ padding: 20, borderRadius: 16, background: isOnline ? 'rgba(0,219,231,0.05)' : 'rgba(255,255,255,0.02)', border: isOnline ? '1px solid rgba(0,219,231,0.20)' : '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -310,36 +336,53 @@ export default function DashboardPage() {
               {/* Passenger Requests Panel */}
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: 24 }}>
                 <h3 style={{ fontSize: 18, fontWeight: 700, color: '#d3e4fe', marginBottom: 16 }}>
-                  {userRole === 'DRIVER_PLANNED' ? 'Live Carpool (Planned Trip) Requests' : 'Live Flexible Hire Bookings'}
+                  {userRole === 'DRIVER_PLANNED' ? 'Your Active Planned Trips' : 'Live Flexible Hire Bookings'}
                 </h3>
                 
                 {isOnline ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    {(userRole === 'DRIVER_PLANNED' 
-                      ? [
-                          { passenger: 'Amit Verma', route: 'Kothrud to Hinjewadi Phase 3', model: 'Planned Trip (Carpool)', time: 'Starts at 09:30 AM', fare: '₹220' },
-                          { passenger: 'Ramesh Kale', route: 'Hadapsar to Kalyani Nagar', model: 'Planned Trip (Carpool)', time: 'Starts at 10:15 AM', fare: '₹150' }
-                        ]
-                      : [
-                          { passenger: 'Priya Nair', route: 'Viman Nagar to Pune Airport', model: 'Flexible Hire (One-way)', time: 'Immediate Departure', fare: '₹480' },
-                          { passenger: 'Shreya Patil', route: 'Pune to Mumbai Lonavala Stop', model: 'Flexible Hire (Outstation)', time: 'Starts at 11:30 AM', fare: '₹2,600' }
-                        ]
-                    ).map((req, idx) => (
-                      <div key={idx} style={{ padding: 16, borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: '#d3e4fe' }}>{req.passenger}</div>
-                          <div style={{ fontSize: 12, color: 'rgba(211,228,254,0.45)', marginTop: 4 }}>Route: {req.route}</div>
-                          <div style={{ fontSize: 11, color: '#00dbe7', marginTop: 4, fontWeight: 600 }}>{req.model} · {req.time}</div>
+                    {userRole === 'DRIVER_PLANNED' ? (
+                      realRides.length === 0 ? (
+                        <div style={{ padding: '20px', textAlign: 'center', color: 'rgba(211,228,254,0.4)' }}>No planned trips yet. Post a ride to get started!</div>
+                      ) : (
+                        realRides.map(ride => (
+                          <div key={ride._id} style={{ padding: 16, borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div>
+                              <div style={{ fontSize: 14, fontWeight: 700, color: '#d3e4fe' }}>{ride.from} → {ride.to}</div>
+                              <div style={{ fontSize: 12, color: 'rgba(211,228,254,0.45)', marginTop: 4 }}>Date: {new Date(ride.date).toLocaleDateString()} at {ride.time}</div>
+                              <div style={{ fontSize: 11, color: '#00dbe7', marginTop: 4, fontWeight: 600 }}>{ride.bookedSeats} / {ride.seats} Seats Booked</div>
+                            </div>
+                            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              <span style={{ fontSize: 16, fontWeight: 800, color: '#00dbe7' }}>₹{ride.pricePerSeat}/seat</span>
+                              <button onClick={() => navigate(`/driver-dashboard/ride/${ride._id}/passengers`)}
+                                style={{ padding: '6px 12px', background: 'linear-gradient(135deg,#00dbe7,#00f1fe)', color: '#002022', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                                View Passengers
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )
+                    ) : (
+                      [
+                        { passenger: 'Priya Nair', route: 'Viman Nagar to Pune Airport', model: 'Flexible Hire (One-way)', time: 'Immediate Departure', fare: '₹480' },
+                        { passenger: 'Shreya Patil', route: 'Pune to Mumbai Lonavala Stop', model: 'Flexible Hire (Outstation)', time: 'Starts at 11:30 AM', fare: '₹2,600' }
+                      ].map((req, idx) => (
+                        <div key={idx} style={{ padding: 16, borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: '#d3e4fe' }}>{req.passenger}</div>
+                            <div style={{ fontSize: 12, color: 'rgba(211,228,254,0.45)', marginTop: 4 }}>Route: {req.route}</div>
+                            <div style={{ fontSize: 11, color: '#00dbe7', marginTop: 4, fontWeight: 600 }}>{req.model} · {req.time}</div>
+                          </div>
+                          <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <span style={{ fontSize: 16, fontWeight: 800, color: '#00dbe7' }}>{req.fare}</span>
+                            <button onClick={() => alert(`Ride request accepted! Connecting with passenger...`)}
+                              style={{ padding: '6px 12px', background: 'linear-gradient(135deg,#00dbe7,#00f1fe)', color: '#002022', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                              Accept
+                            </button>
+                          </div>
                         </div>
-                        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <span style={{ fontSize: 16, fontWeight: 800, color: '#00dbe7' }}>{req.fare}</span>
-                          <button onClick={() => alert(`Ride request accepted! Connecting with passenger...`)}
-                            style={{ padding: '6px 12px', background: 'linear-gradient(135deg,#00dbe7,#00f1fe)', color: '#002022', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                            Accept
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 ) : (
                   <div style={{ padding: '40px 0', textAlign: 'center', color: 'rgba(211,228,254,0.30)' }}>

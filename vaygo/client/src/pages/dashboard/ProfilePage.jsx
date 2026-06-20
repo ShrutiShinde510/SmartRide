@@ -20,11 +20,34 @@ export default function ProfilePage() {
     }
   }, []);
 
-  const handleSave = () => {
-    const updated = { ...user, ...form };
-    setUser(updated);
-    localStorage.setItem('vaygo_user', JSON.stringify(updated));
-    setEditing(false);
+  const handleSave = async () => {
+    try {
+      const res = await fetch('/api/auth/update-profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('vaygo_token')}`
+        },
+        body: JSON.stringify({
+          full_name: form.full_name,
+          email: form.email,
+          city: form.city,
+          gender: form.gender
+        })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setUser(data.user);
+        localStorage.setItem('vaygo_user', JSON.stringify(data.user));
+        setEditing(false);
+        alert('Profile updated successfully!');
+      } else {
+        alert(data.message || 'Failed to update profile');
+      }
+    } catch (err) {
+      alert('Network error, please try again');
+    }
   };
 
   const INFO_ROWS = [
