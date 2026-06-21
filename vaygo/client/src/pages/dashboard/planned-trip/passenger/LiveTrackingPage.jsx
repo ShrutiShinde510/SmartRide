@@ -30,16 +30,55 @@ export default function LiveTrackingPage() {
   const [isPanelExpanded, setIsPanelExpanded] = useState(false);
 
   useEffect(() => {
+    let interval;
     async function fetchBooking() {
       const { ok, data } = await apiGet(`/api/bookings/${bookingId}`);
       if (ok && data.success) {
         setBooking(data.booking);
+        // We no longer forcefully redirect. The UI will adapt to show "Trip Completed"
+        if (data.booking.rideId?.status === 'Completed') {
+          if (interval) clearInterval(interval);
+        }
       }
     }
+    
     fetchBooking();
-  }, [bookingId]);
+    interval = setInterval(fetchBooking, 5000);
+    return () => clearInterval(interval);
+  }, [bookingId, navigate]);
 
   if (!booking) return <div style={{ background: '#f8fafc', height: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>Connecting to GPS...</div>;
+
+  if (booking.rideId?.status === 'Completed' || booking.rideId?.status === 'Cancelled' || booking.boardingStatus === 'Cancelled') {
+    const isRated = localStorage.getItem(`vaygo_rated_${bookingId}`);
+    return (
+      <div style={{ height: '100dvh', width: '100%', background: '#f8fafc', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20, textAlign: 'center' }}>
+        <div style={{ width: 80, height: 80, borderRadius: '50%', background: booking.rideId?.status === 'Completed' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 40, color: booking.rideId?.status === 'Completed' ? '#10b981' : '#ef4444' }}>
+            {booking.rideId?.status === 'Completed' ? 'check_circle' : 'cancel'}
+          </span>
+        </div>
+        <h2 style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>
+          Trip {booking.rideId?.status === 'Completed' ? 'Completed' : 'Cancelled'}
+        </h2>
+        <p style={{ fontSize: 14, color: '#64748b', marginBottom: 32, maxWidth: 300 }}>
+          {booking.rideId?.status === 'Completed' 
+            ? 'This trip has already ended. Live tracking is no longer available.' 
+            : 'This trip was cancelled. Live tracking is not available.'}
+        </p>
+        
+        {booking.rideId?.status === 'Completed' && !isRated && (
+          <button onClick={() => navigate(`/dashboard/booking/${bookingId}/rate`)} style={{ padding: '16px 32px', background: 'linear-gradient(135deg,#00dbe7,#00f1fe)', color: '#002022', border: 'none', borderRadius: 14, fontSize: 16, fontWeight: 800, cursor: 'pointer', marginBottom: 16 }}>
+            Rate Driver
+          </button>
+        )}
+        
+        <button onClick={() => navigate('/dashboard/home')} style={{ padding: '16px 32px', background: 'transparent', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: 14, fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>
+          Back to Dashboard
+        </button>
+      </div>
+    );
+  }
 
   const startLoc = booking.rideId?.startLocation ? [booking.rideId.startLocation.lat, booking.rideId.startLocation.lng] : [18.5204, 73.8567]; // fallback to Pune
   const driverLoc = booking.rideId?.startLocation ? [booking.rideId.startLocation.lat - 0.005, booking.rideId.startLocation.lng - 0.005] : [18.515, 73.850]; // Mock driver a bit away
@@ -71,8 +110,8 @@ export default function LiveTrackingPage() {
           <span className="material-symbols-outlined">arrow_back</span>
         </button>
         <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 24, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxWidth: 'calc(100% - 60px)' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#10b981' }}>schedule</span>
-          <span style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Pickup in 12 mins</span>
+          <span className="material-symbols-outlined" style={{ fontSize: 20, color: booking.rideId?.status === 'Completed' ? '#3b82f6' : '#10b981' }}>{booking.rideId?.status === 'Completed' ? 'check_circle' : 'schedule'}</span>
+          <span style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{booking.rideId?.status === 'Completed' ? 'Trip Completed' : 'Pickup in 12 mins'}</span>
         </div>
       </div>
 
@@ -141,9 +180,15 @@ export default function LiveTrackingPage() {
                 </a>
               </div>
 
-              <button onClick={() => navigate(`/dashboard/booking/${bookingId}/rate`)} style={{ padding: '16px', background: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer', marginTop: 8 }}>
-                Cancel Ride
-              </button>
+              {booking.rideId?.status === 'Completed' ? (
+                <button onClick={() => navigate(`/dashboard/booking/${bookingId}/rate`)} style={{ padding: '16px', background: '#e0e7ff', border: '1px solid #c7d2fe', color: '#4f46e5', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 20 }}>star</span> Rate Driver
+                </button>
+              ) : (
+                <button onClick={() => navigate(`/dashboard/booking/${bookingId}/rate`)} style={{ padding: '16px', background: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer', marginTop: 8 }}>
+                  Cancel Ride
+                </button>
+              )}
             </div>
           </div>
 

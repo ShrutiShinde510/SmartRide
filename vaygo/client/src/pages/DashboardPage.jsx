@@ -12,6 +12,7 @@ export default function DashboardPage() {
   const [rideType, setRideType] = useState('planned'); // planned, hire, driver
   const [rideBooked, setRideBooked] = useState(false);
   const [realRides, setRealRides] = useState([]);
+  const [feedbacks, setFeedbacks] = useState([]);
 
   // Experience and charges update state
   const [rates, setRates] = useState({ hourly: 150, km: 12 });
@@ -54,6 +55,13 @@ export default function DashboardPage() {
     apiGet('/api/rides/driver').then(({ ok, data }) => {
       if (ok && data.success) {
         setRealRides(data.rides.slice(0, 5)); // show top 5
+      }
+    });
+
+    // Fetch feedbacks
+    apiGet('/api/bookings/driver/feedbacks').then(({ ok, data }) => {
+      if (ok && data.success) {
+        setFeedbacks(data.feedbacks);
       }
     });
 
@@ -305,16 +313,33 @@ export default function DashboardPage() {
               <div style={{ background: 'linear-gradient(135deg, rgba(0,219,231,0.1) 0%, rgba(0,100,120,0.05) 100%)', border: '1px solid rgba(0,219,231,0.2)', borderRadius: 16, padding: 20 }}>
                 <h3 style={{ fontSize: 16, fontWeight: 700, color: '#d3e4fe', marginBottom: 16 }}>Quick Actions</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <button onClick={() => navigate('/driver-dashboard/create-ride')}
-                    style={{ padding: '14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: '#d3e4fe', fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.2s' }}>
-                    <span className="material-symbols-outlined" style={{ color: '#00dbe7' }}>add_circle</span>
-                    Post a Ride
-                  </button>
-                  <button onClick={() => navigate('/driver-dashboard/rides')}
-                    style={{ padding: '14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: '#d3e4fe', fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.2s' }}>
-                    <span className="material-symbols-outlined" style={{ color: '#00dbe7' }}>directions_car</span>
-                    Manage My Rides
-                  </button>
+                  {userRole === 'DRIVER_PLANNED' ? (
+                    <>
+                      <button onClick={() => navigate('/driver-dashboard/create-ride')}
+                        style={{ padding: '14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: '#d3e4fe', fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.2s' }}>
+                        <span className="material-symbols-outlined" style={{ color: '#00dbe7' }}>add_circle</span>
+                        Post a Ride
+                      </button>
+                      <button onClick={() => navigate('/driver-dashboard/rides')}
+                        style={{ padding: '14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: '#d3e4fe', fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.2s' }}>
+                        <span className="material-symbols-outlined" style={{ color: '#00dbe7' }}>directions_car</span>
+                        Manage My Rides
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={() => navigate('/driver-dashboard/owner/list-car')}
+                        style={{ padding: '14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: '#d3e4fe', fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.2s' }}>
+                        <span className="material-symbols-outlined" style={{ color: '#00dbe7' }}>directions_car</span>
+                        List My Car
+                      </button>
+                      <button onClick={() => navigate('/driver-dashboard/owner/requests')}
+                        style={{ padding: '14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: '#d3e4fe', fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.2s' }}>
+                        <span className="material-symbols-outlined" style={{ color: '#00dbe7' }}>history</span>
+                        Manage Requests
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -363,25 +388,26 @@ export default function DashboardPage() {
                         ))
                       )
                     ) : (
-                      [
-                        { passenger: 'Priya Nair', route: 'Viman Nagar to Pune Airport', model: 'Flexible Hire (One-way)', time: 'Immediate Departure', fare: '₹480' },
-                        { passenger: 'Shreya Patil', route: 'Pune to Mumbai Lonavala Stop', model: 'Flexible Hire (Outstation)', time: 'Starts at 11:30 AM', fare: '₹2,600' }
-                      ].map((req, idx) => (
-                        <div key={idx} style={{ padding: 16, borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <div>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: '#d3e4fe' }}>{req.passenger}</div>
-                            <div style={{ fontSize: 12, color: 'rgba(211,228,254,0.45)', marginTop: 4 }}>Route: {req.route}</div>
-                            <div style={{ fontSize: 11, color: '#00dbe7', marginTop: 4, fontWeight: 600 }}>{req.model} · {req.time}</div>
+                      realRides.length === 0 ? (
+                        <div style={{ padding: '20px', textAlign: 'center', color: 'rgba(211,228,254,0.4)' }}>No live requests currently. You will be notified when a passenger needs a car.</div>
+                      ) : (
+                        realRides.map((req, idx) => (
+                          <div key={idx} style={{ padding: 16, borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div>
+                              <div style={{ fontSize: 14, fontWeight: 700, color: '#d3e4fe' }}>Passenger Request</div>
+                              <div style={{ fontSize: 12, color: 'rgba(211,228,254,0.45)', marginTop: 4 }}>Route: {req.from} to {req.to}</div>
+                              <div style={{ fontSize: 11, color: '#00dbe7', marginTop: 4, fontWeight: 600 }}>Flexible Hire · {req.time || 'Immediate'}</div>
+                            </div>
+                            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              <span style={{ fontSize: 16, fontWeight: 800, color: '#00dbe7' }}>₹{req.price || req.pricePerSeat || 'Negotiate'}</span>
+                              <button onClick={() => alert(`Ride request accepted! Connecting with passenger...`)}
+                                style={{ padding: '6px 12px', background: 'linear-gradient(135deg,#00dbe7,#00f1fe)', color: '#002022', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                                Accept
+                              </button>
+                            </div>
                           </div>
-                          <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            <span style={{ fontSize: 16, fontWeight: 800, color: '#00dbe7' }}>{req.fare}</span>
-                            <button onClick={() => alert(`Ride request accepted! Connecting with passenger...`)}
-                              style={{ padding: '6px 12px', background: 'linear-gradient(135deg,#00dbe7,#00f1fe)', color: '#002022', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                              Accept
-                            </button>
-                          </div>
-                        </div>
-                      ))
+                        ))
+                      )
                     )}
                   </div>
                 ) : (
@@ -400,8 +426,8 @@ export default function DashboardPage() {
               {/* Earnings card */}
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: 24 }}>
                 <h4 style={{ fontSize: 13, fontWeight: 700, color: 'rgba(211,228,254,0.40)', letterSpacing: '0.06em', marginBottom: 16 }}>TODAY'S EARNINGS</h4>
-                <div style={{ fontSize: 36, fontWeight: 800, color: '#00dbe7', letterSpacing: '-1px' }}>₹1,450</div>
-                <div style={{ fontSize: 12, color: 'rgba(211,228,254,0.40)', marginTop: 6 }}>Completed: 3 Trips · 5.2 hrs</div>
+                <div style={{ fontSize: 36, fontWeight: 800, color: '#00dbe7', letterSpacing: '-1px' }}>₹0</div>
+                <div style={{ fontSize: 12, color: 'rgba(211,228,254,0.40)', marginTop: 6 }}>Completed: 0 Trips · 0 hrs</div>
               </div>
 
               {/* Vehicle info card */}
@@ -488,6 +514,32 @@ export default function DashboardPage() {
                 </div>
               )}
 
+              {/* Feedbacks Display for Driver */}
+              {feedbacks.length > 0 && (
+                <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: 20 }}>
+                  <h4 style={{ fontSize: 12, fontWeight: 700, color: 'rgba(211,228,254,0.40)', marginBottom: 16 }}>PASSENGER FEEDBACKS</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {feedbacks.map((fb, i) => (
+                      <div key={i} style={{ borderBottom: i < feedbacks.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none', paddingBottom: i < feedbacks.length - 1 ? 12 : 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#d3e4fe' }}>{fb.passengerName}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 2, color: '#fbbf24' }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>star</span>
+                            <span style={{ fontSize: 12, fontWeight: 700 }}>{fb.rating}</span>
+                          </div>
+                        </div>
+                        {fb.feedback && (
+                          <div style={{ fontSize: 12, color: 'rgba(211,228,254,0.60)', fontStyle: 'italic' }}>"{fb.feedback}"</div>
+                        )}
+                        <div style={{ fontSize: 10, color: 'rgba(211,228,254,0.30)', marginTop: 4 }}>
+                          {new Date(fb.date).toLocaleDateString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
             </div>
 
           </div>
@@ -521,25 +573,26 @@ export default function DashboardPage() {
                 
                 {isOnline ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    {[
-                      { client: 'Sanjay Deshmukh', vehicle: 'Drive: Toyota Fortuner (SUV)', duration: '6 hrs shift (Local)', rate: '₹900 + Outstation Allowance', date: 'Today, starts at 02:00 PM' },
-                      { client: 'Meera Sen', vehicle: 'Drive: Honda City (Sedan)', duration: '12 hrs shift (Outstation)', rate: '₹1,800 + KM Charges', date: 'Tomorrow, Starts at 06:00 AM' }
-                    ].map((gig, idx) => (
-                      <div key={idx} style={{ padding: 16, borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: '#d3e4fe' }}>{gig.client}</div>
-                          <div style={{ fontSize: 12, color: 'rgba(211,228,254,0.45)', marginTop: 4 }}>Vehicle: {gig.vehicle}</div>
-                          <div style={{ fontSize: 11, color: '#00dbe7', marginTop: 4, fontWeight: 600 }}>{gig.duration} · {gig.date}</div>
+                    {realRides.length === 0 ? (
+                      <div style={{ padding: '20px', textAlign: 'center', color: 'rgba(211,228,254,0.4)' }}>No booking invitations currently. You will be notified when a gig is available.</div>
+                    ) : (
+                      realRides.map((gig, idx) => (
+                        <div key={idx} style={{ padding: 16, borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: '#d3e4fe' }}>Gig Request</div>
+                            <div style={{ fontSize: 12, color: 'rgba(211,228,254,0.45)', marginTop: 4 }}>Vehicle: {gig.vehicle || 'Not specified'}</div>
+                            <div style={{ fontSize: 11, color: '#00dbe7', marginTop: 4, fontWeight: 600 }}>{gig.duration || 'Flexible shift'} · {gig.date || 'Today'}</div>
+                          </div>
+                          <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <span style={{ fontSize: 14, fontWeight: 800, color: '#00dbe7' }}>₹{gig.rate || gig.price || 'Negotiate'}</span>
+                            <button onClick={() => alert(`Invite accepted! Contacting car owner...`)}
+                              style={{ padding: '6px 12px', background: 'linear-gradient(135deg,#00dbe7,#00f1fe)', color: '#002022', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                              Accept Gig
+                            </button>
+                          </div>
                         </div>
-                        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <span style={{ fontSize: 14, fontWeight: 800, color: '#00dbe7' }}>{gig.rate}</span>
-                          <button onClick={() => alert(`Invite accepted! Contacting car owner Sanjay...`)}
-                            style={{ padding: '6px 12px', background: 'linear-gradient(135deg,#00dbe7,#00f1fe)', color: '#002022', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                            Accept Gig
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 ) : (
                   <div style={{ padding: '40px 0', textAlign: 'center', color: 'rgba(211,228,254,0.30)' }}>

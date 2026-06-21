@@ -80,3 +80,26 @@ exports.getRideDetails = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to fetch ride details' });
   }
 };
+
+// Complete a ride (Driver)
+exports.completeRide = async (req, res) => {
+  try {
+    const ride = await Ride.findById(req.params.id);
+    if (!ride) {
+      return res.status(404).json({ success: false, message: 'Ride not found' });
+    }
+    
+    // Check if the current user is the driver
+    if (ride.driverId.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Not authorized to complete this ride' });
+    }
+
+    ride.status = 'Completed';
+    await ride.save();
+
+    res.status(200).json({ success: true, message: 'Ride completed successfully', ride });
+  } catch (error) {
+    console.error('Complete ride error:', error);
+    res.status(500).json({ success: false, message: 'Failed to complete ride' });
+  }
+};

@@ -42,10 +42,10 @@ export default function HomePage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
           {[
             { icon: 'schedule',      label: 'Planned Trip',    sub: 'Carpool seats',    path: '/dashboard/search' },
-            { icon: 'directions_car', label: 'Flexible Hire',  sub: 'Car + owner',      path: '/dashboard/search' },
-            { icon: 'person_pin',    label: 'Driver on Demand', sub: 'Your own car',    path: '/dashboard/search' },
+            { icon: 'directions_car', label: 'Flexible Hire',  sub: 'Car + owner',      path: '/dashboard/hire/request' },
+            { icon: 'person_pin',    label: 'Driver on Demand', sub: 'Your own car',    path: '' },
           ].map((m, i) => (
-            <button key={i} onClick={() => navigate(m.path)}
+            <button key={i} onClick={() => m.path ? navigate(m.path) : alert('Coming soon!')}
               style={{ padding: '14px 10px', borderRadius: 14, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s', color: '#d3e4fe' }}
               onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,219,231,0.08)'; e.currentTarget.style.borderColor = 'rgba(0,219,231,0.25)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}>
@@ -67,6 +67,21 @@ export default function HomePage() {
           </div>
         ))}
       </div>
+
+      {/* My Offers Button (Quick Link) */}
+      <button onClick={() => navigate('/dashboard/hire/offers')}
+        style={{ width: '100%', padding: '16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, cursor: 'pointer', transition: 'all 0.2s' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(0,219,231,0.1)', color: '#00dbe7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="material-symbols-outlined">local_activity</span>
+          </div>
+          <div style={{ textAlign: 'left' }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#d3e4fe' }}>My Hire Offers</div>
+            <div style={{ fontSize: 12, color: 'rgba(211,228,254,0.5)' }}>Check your booking requests & driver offers</div>
+          </div>
+        </div>
+        <span className="material-symbols-outlined" style={{ color: 'rgba(211,228,254,0.3)' }}>chevron_right</span>
+      </button>
 
       {/* Recent Rides */}
       <div style={{ borderRadius: 16, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden' }}>

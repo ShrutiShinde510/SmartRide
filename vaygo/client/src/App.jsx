@@ -40,6 +40,25 @@ import RidePassengersPage from './pages/dashboard/planned-trip/driver/RidePassen
 import NavigationPage from './pages/dashboard/planned-trip/driver/NavigationPage';
 import RatePassengerPage from './pages/dashboard/planned-trip/driver/RatePassengerPage';
 
+// Flexible Hire - Family
+import PostHireRequestPage from './pages/dashboard/flexible-hire/family/PostHireRequestPage';
+import BrowseCarsPage from './pages/dashboard/flexible-hire/family/BrowseCarsPage';
+import OwnerProfilePage from './pages/dashboard/flexible-hire/family/OwnerProfilePage';
+import PassengerOffersPage from './pages/dashboard/flexible-hire/family/PassengerOffersPage';
+import NegotiateChat from './pages/dashboard/flexible-hire/family/NegotiateChat';
+import HirePaymentPage from './pages/dashboard/flexible-hire/family/HirePaymentPage';
+import HireConfirmPage from './pages/dashboard/flexible-hire/family/HireConfirmPage';
+import HireTrackingPage from './pages/dashboard/flexible-hire/family/HireTrackingPage';
+import FinalPaymentPage from './pages/dashboard/flexible-hire/family/FinalPaymentPage';
+import RateOwnerPage from './pages/dashboard/flexible-hire/family/RateOwnerPage';
+
+// Flexible Hire - Owner
+import ListMyCarPage from './pages/dashboard/flexible-hire/owner/ListMyCarPage';
+import OwnerDashboard from './pages/dashboard/flexible-hire/owner/OwnerDashboard';
+import ManageRequestsPage from './pages/dashboard/flexible-hire/owner/ManageRequestsPage';
+import ActiveHirePage from './pages/dashboard/flexible-hire/owner/ActiveHirePage';
+import RateFamilyPage from './pages/dashboard/flexible-hire/owner/RateFamilyPage';
+
 export default function App() {
   return (
     <Routes>
@@ -62,6 +81,13 @@ export default function App() {
         <Route path="ride/:rideId/navigate" element={<NavigationPage />} />
         <Route path="ride/:rideId/rate" element={<RatePassengerPage />} />
         <Route path="booking/:bookingId/chat" element={<ChatPage />} />
+
+        {/* Flexible Hire Owner Routes */}
+        <Route path="owner/list-car" element={<ListMyCarPage />} />
+        <Route path="owner/dashboard" element={<OwnerDashboard />} />
+        <Route path="owner/requests" element={<ManageRequestsPage />} />
+        <Route path="owner/active/:hireId" element={<ActiveHirePage />} />
+        <Route path="owner/rate/:hireId" element={<RateFamilyPage />} />
       </Route>
 
       {/* ── Passenger dashboard (nested routes) ── */}
@@ -84,6 +110,19 @@ export default function App() {
         <Route path="history"  element={<HistoryPage />} />
         <Route path="profile"  element={<ProfilePage />} />
         <Route path="settings" element={<SettingsPage />} />
+
+        {/* Flexible Hire Passenger Routes */}
+        <Route path="hire/request" element={<PostHireRequestPage />} />
+        <Route path="hire/browse" element={<BrowseCarsPage />} />
+        <Route path="hire/owner/:ownerId" element={<OwnerProfilePage />} />
+        <Route path="hire/offers" element={<PassengerOffersPage />} />
+        <Route path="hire/chat/:ownerId" element={<NegotiateChat />} />
+        <Route path="hire/payment/:hireId" element={<HirePaymentPage />} />
+        <Route path="hire/confirm/:hireId" element={<HireConfirmPage />} />
+        <Route path="hire/track/:hireId" element={<HireTrackingPage />} />
+        <Route path="hire/final/:hireId" element={<FinalPaymentPage />} />
+        <Route path="hire/rate/:hireId" element={<RateOwnerPage />} />
+
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

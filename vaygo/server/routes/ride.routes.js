@@ -7,5 +7,6 @@ router.post('/', authMiddleware, rideController.createRide);
 router.get('/', rideController.searchRides);
 router.get('/driver', authMiddleware, rideController.getDriverRides);
 router.get('/:id', rideController.getRideDetails);
+router.post('/:id/complete', authMiddleware, rideController.completeRide);
 
 module.exports = router;

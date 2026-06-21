@@ -596,4 +596,31 @@ router.post('/update-profile', authMiddleware, async (req, res) => {
   }
 });
 
+// @route   GET /api/auth/flexible-drivers
+// @desc    Get all available flexible drivers (cars for hire)
+router.get('/flexible-drivers', async (req, res) => {
+  try {
+    const drivers = await FlexibleDriver.find({ 'account.account_status': 'active' });
+    res.json({ success: true, drivers });
+  } catch (err) {
+    console.error('Fetch flexible drivers error:', err);
+    res.status(500).json({ success: false, message: 'Server error fetching drivers' });
+  }
+});
+
+// @route   GET /api/auth/flexible-drivers/:id
+// @desc    Get a specific flexible driver by ID
+router.get('/flexible-drivers/:id', async (req, res) => {
+  try {
+    const driver = await FlexibleDriver.findById(req.params.id);
+    if (!driver) {
+      return res.status(404).json({ success: false, message: 'Driver not found' });
+    }
+    res.json({ success: true, driver });
+  } catch (err) {
+    console.error('Fetch flexible driver error:', err);
+    res.status(500).json({ success: false, message: 'Server error fetching driver' });
+  }
+});
+
 module.exports = router;

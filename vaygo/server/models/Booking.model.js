@@ -29,6 +29,14 @@ const bookingSchema = new mongoose.Schema({
     type: String,
     enum: ['Waiting', 'Boarded', 'Completed', 'Cancelled'],
     default: 'Waiting'
+  },
+  rating: {
+    type: Number,
+    default: 0
+  },
+  feedback: {
+    type: String,
+    default: ''
   }
 }, { timestamps: true });
 

@@ -20,6 +20,7 @@ export default function BookingsPage() {
         const bookings = resData.bookings;
         const upcoming = [];
         const completed = [];
+        const active = [];
         
         bookings.forEach(b => {
           const mapped = {
@@ -37,6 +38,8 @@ export default function BookingsPage() {
           
           if (b.boardingStatus === 'Cancelled' || b.boardingStatus === 'Completed') {
             completed.push(mapped);
+          } else if (b.boardingStatus === 'In Progress') {
+            active.push(mapped);
           } else if (b.paymentStatus === 'Completed' || b.paymentStatus === 'Pending') {
             upcoming.push(mapped);
           } else {
@@ -44,7 +47,36 @@ export default function BookingsPage() {
           }
         });
 
-        setData({ Active: [], Upcoming: upcoming, Completed: completed });
+        // Inject Flexible Hire Requests from LocalStorage
+        const flexibleRequests = JSON.parse(localStorage.getItem('vaygo_hire_requests') || '[]');
+        flexibleRequests.forEach(req => {
+          if (req.status === 'pending' || req.status === 'offer_sent') return; // Not fully booked yet
+          
+          const mapped = {
+            id: req.id,
+            rideId: req.id,
+            route: `${req.from} → ${req.to}`,
+            driver: req.ownerName || 'Driver',
+            type: 'Flexible Hire',
+            time: req.date || 'Unknown Time',
+            fare: '₹' + (req.finalPrice || req.agreedPrice || 2000),
+            eta: '5 mins',
+            paymentStatus: req.status === 'completed' ? 'Completed' : 'Pending',
+            boardingStatus: req.status === 'completed' ? 'Completed' : (req.status === 'rejected' ? 'Cancelled' : req.status)
+          };
+
+          if (req.status === 'completed') {
+            completed.push(mapped);
+          } else if (req.status === 'rejected') {
+            completed.push(mapped);
+          } else if (req.status === 'in_progress') {
+            active.push(mapped);
+          } else if (req.status === 'confirmed') {
+            upcoming.push(mapped);
+          }
+        });
+
+        setData({ Active: active, Upcoming: upcoming, Completed: completed });
       }
       setLoading(false);
     }
@@ -104,7 +136,10 @@ export default function BookingsPage() {
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
                   <div style={{ fontSize: 17, fontWeight: 800, color: '#00dbe7', marginBottom: 8 }}>{b.fare}</div>
                   {tab === 'Active' && (
-                    <button onClick={() => navigate(`/dashboard/booking/${b.id}/track`)} style={{ padding: '6px 12px', background: 'rgba(0,219,231,0.08)', border: '1px solid rgba(0,219,231,0.20)', borderRadius: 7, color: '#00dbe7', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                    <button onClick={() => {
+                      if (b.type === 'Flexible Hire') navigate(`/dashboard/hire/track/${b.id}`);
+                      else navigate(`/dashboard/booking/${b.id}/track`);
+                    }} style={{ padding: '6px 12px', background: 'rgba(0,219,231,0.08)', border: '1px solid rgba(0,219,231,0.20)', borderRadius: 7, color: '#00dbe7', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                       Track
                     </button>
                   )}

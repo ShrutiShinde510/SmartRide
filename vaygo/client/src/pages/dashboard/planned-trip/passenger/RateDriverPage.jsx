@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { apiGet, apiPost } from '../../../../utils/api';
 
 export default function RateDriverPage() {
   const { bookingId } = useParams();
@@ -7,11 +8,33 @@ export default function RateDriverPage() {
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
   const [feedback, setFeedback] = useState('');
+  const [driverName, setDriverName] = useState('Loading...');
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    async function fetchBooking() {
+      const { ok, data } = await apiGet(`/api/bookings/${bookingId}`);
+      if (ok && data.success) {
+        setDriverName(data.booking.rideId?.driverId?.personal_info?.full_name || 'Driver');
+      }
+    }
+    fetchBooking();
+  }, [bookingId]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    alert(`Thank you for rating! You gave ${rating} stars.`);
-    navigate('/dashboard/home');
+    try {
+      const { ok } = await apiPost(`/api/bookings/${bookingId}/rate`, { rating, feedback });
+      if (ok) {
+        alert(`Thank you for rating! You gave ${rating} stars.`);
+        localStorage.setItem(`vaygo_rated_${bookingId}`, 'true');
+        navigate('/dashboard/home');
+      } else {
+        alert('Failed to submit rating.');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Error submitting rating');
+    }
   };
 
   return (
@@ -22,7 +45,7 @@ export default function RateDriverPage() {
           <span className="material-symbols-outlined" style={{ fontSize: 40, color: '#00dbe7' }}>check_circle</span>
         </div>
         <h2 style={{ fontSize: 26, fontWeight: 800, color: '#d3e4fe', marginBottom: 8 }}>Trip Completed</h2>
-        <p style={{ fontSize: 14, color: 'rgba(211,228,254,0.5)' }}>How was your ride with Amit Verma?</p>
+        <p style={{ fontSize: 14, color: 'rgba(211,228,254,0.5)' }}>How was your ride with {driverName}?</p>
       </div>
 
       <form onSubmit={handleSubmit}>

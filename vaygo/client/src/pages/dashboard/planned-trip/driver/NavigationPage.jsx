@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { apiGet } from '../../../../utils/api';
+import { apiGet, apiPost } from '../../../../utils/api';
 import * as L from 'leaflet';
 import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -165,8 +165,22 @@ export default function NavigationPage() {
             </div>
 
             {/* Action Buttons */}
-            <button onClick={() => navigate(`/driver-dashboard/ride/${rideId}/rate`)} style={{ width: '100%', padding: '14px', background: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444', borderRadius: 14, fontSize: 15, fontWeight: 700, cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>stop_circle</span> End Trip Early
+            <button 
+              onClick={async () => {
+                try {
+                  const { ok, data } = await apiPost(`/api/rides/${rideId}/complete`);
+                  if (ok && data.success) {
+                    navigate(`/driver-dashboard/ride/${rideId}/rate`, { replace: true });
+                  } else {
+                    alert('Failed to end trip: ' + (data?.message || 'Unknown error'));
+                  }
+                } catch (err) {
+                  console.error(err);
+                  alert('Error ending trip');
+                }
+              }} 
+              style={{ width: '100%', padding: '14px', background: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444', borderRadius: 14, fontSize: 15, fontWeight: 700, cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>stop_circle</span> End Trip
             </button>
           </div>
 

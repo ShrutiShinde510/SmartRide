@@ -111,3 +111,48 @@ exports.getPassengerBookings = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to fetch passenger bookings' });
   }
 };
+
+// Rate a booking
+exports.rateBooking = async (req, res) => {
+  try {
+    const { rating, feedback } = req.body;
+    const booking = await Booking.findByIdAndUpdate(
+      req.params.id, 
+      { rating: Number(rating), feedback: feedback || '' }, 
+      { new: true }
+    );
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    res.status(200).json({ success: true, booking });
+  } catch (error) {
+    console.error('Rate booking error:', error);
+    res.status(500).json({ success: false, message: 'Failed to submit rating' });
+  }
+};
+
+// Get feedbacks for a driver
+exports.getDriverFeedbacks = async (req, res) => {
+  try {
+    // Find all rides by this driver
+    const rides = await Ride.find({ driverId: req.user.id });
+    const rideIds = rides.map(r => r._id);
+
+    // Find all completed bookings with ratings for these rides
+    const bookings = await Booking.find({ 
+      rideId: { $in: rideIds }, 
+      rating: { $gt: 0 } 
+    }).populate('passengerId').sort({ createdAt: -1 }).limit(10);
+
+    const feedbacks = bookings.map(b => ({
+      _id: b._id,
+      rating: b.rating,
+      feedback: b.feedback,
+      passengerName: b.passengerId?.personal_info?.full_name || 'Passenger',
+      date: b.createdAt
+    }));
+
+    res.status(200).json({ success: true, feedbacks });
+  } catch (error) {
+    console.error('Get driver feedbacks error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch feedbacks' });
+  }
+};
