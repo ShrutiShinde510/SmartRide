@@ -1,5 +1,6 @@
 const Message = require('../models/Message.model');
 const Booking = require('../models/Booking.model');
+const M3Booking = require('../models/M3Booking.model');
 
 // Get all messages for a booking
 exports.getMessages = async (req, res) => {
@@ -7,7 +8,10 @@ exports.getMessages = async (req, res) => {
     const { bookingId } = req.params;
     
     // Verify booking exists and user is part of it
-    const booking = await Booking.findById(bookingId).populate('rideId');
+    let booking = await Booking.findById(bookingId).populate('rideId');
+    if (!booking) {
+      booking = await M3Booking.findById(bookingId);
+    }
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }

@@ -76,6 +76,35 @@ export default function BookingsPage() {
           }
         });
 
+        // Inject M3 On-Demand Driver Requests
+        const { ok: m3Ok, data: m3Data } = await apiGet('/api/m3/request/my-requests');
+        if (m3Ok && m3Data.success) {
+          m3Data.requests.forEach(req => {
+            const mapped = {
+              id: req._id,
+              rideId: req._id,
+              route: `${req.pickupLocation} → ${req.dropoffLocation}`,
+              driver: req.driverId ? req.driverId.personal_info.full_name : 'Pending Driver',
+              type: 'Driver on Demand',
+              time: new Date(req.date).toLocaleDateString(),
+              fare: '₹' + req.estimatedPrice,
+              eta: req.status === 'accepted' ? 'Assigned' : (req.interestedDrivers?.length > 0 ? `${req.interestedDrivers.length} Offer(s)` : 'Searching...'),
+              paymentStatus: 'Pending',
+              boardingStatus: req.status,
+              driverPhone: req.driverId?.personal_info?.phone,
+              driverRating: req.driverId?.platform_trust?.hire_rating
+            };
+
+            if (req.status === 'completed' || req.status === 'cancelled') {
+              completed.push(mapped);
+            } else if (req.status === 'driving' || req.status === 'accepted') {
+              active.push(mapped);
+            } else {
+              upcoming.push(mapped);
+            }
+          });
+        }
+
         setData({ Active: active, Upcoming: upcoming, Completed: completed });
       }
       setLoading(false);
@@ -130,6 +159,11 @@ export default function BookingsPage() {
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 700, color: '#d3e4fe' }}>{b.route}</div>
                     <div style={{ fontSize: 11, color: 'rgba(211,228,254,0.40)', marginTop: 3 }}>Driver: {b.driver} · {b.type}</div>
+                    {b.driverPhone && (
+                      <div style={{ fontSize: 11, color: '#00dbe7', marginTop: 2 }}>
+                        📞 {b.driverPhone} {b.driverRating ? `· ⭐ ${b.driverRating}` : ''}
+                      </div>
+                    )}
                     <div style={{ fontSize: 11, color: STATUS_COLOR[tab], marginTop: 4, fontWeight: 600 }}>{b.time}</div>
                   </div>
                 </div>
@@ -138,9 +172,15 @@ export default function BookingsPage() {
                   {tab === 'Active' && (
                     <button onClick={() => {
                       if (b.type === 'Flexible Hire') navigate(`/dashboard/hire/track/${b.id}`);
+                      else if (b.type === 'Driver on Demand') navigate(`/dashboard/m3/track/${b.id}`);
                       else navigate(`/dashboard/booking/${b.id}/track`);
                     }} style={{ padding: '6px 12px', background: 'rgba(0,219,231,0.08)', border: '1px solid rgba(0,219,231,0.20)', borderRadius: 7, color: '#00dbe7', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                       Track
+                    </button>
+                  )}
+                  {tab === 'Upcoming' && b.type === 'Driver on Demand' && b.boardingStatus === 'pending' && b.eta !== 'Searching...' && (
+                    <button onClick={() => navigate(`/dashboard/m3/offers/${b.id}`)} style={{ padding: '6px 12px', background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)', borderRadius: 7, color: '#fbbf24', fontSize: 11, fontWeight: 700, cursor: 'pointer', marginBottom: 8, display: 'block', width: '100%' }}>
+                      View Offers
                     </button>
                   )}
                   {tab === 'Upcoming' && (

@@ -21,7 +21,7 @@ app.use(morgan('dev'));
 // ── Rate limiting ──
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: process.env.NODE_ENV === 'production' ? 100 : 5000,
   message: { success: false, message: 'Too many requests. Please try again later.' },
 });
 app.use('/api', limiter);
@@ -33,6 +33,7 @@ app.use('/api/rides', require('./routes/ride.routes'));
 app.use('/api/bookings', require('./routes/booking.routes'));
 app.use('/api/messages', require('./routes/message.routes'));
 app.use('/api/hires', require('./routes/hire.routes'));
+app.use('/api/m3', require('./routes/m3.routes'));
 // ── Health check ──
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'Vaygo server running', timestamp: new Date() });

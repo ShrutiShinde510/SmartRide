@@ -12,6 +12,7 @@ export default function DashboardPage() {
   const [rideType, setRideType] = useState('planned'); // planned, hire, driver
   const [rideBooked, setRideBooked] = useState(false);
   const [realRides, setRealRides] = useState([]);
+  const [activeM3Rides, setActiveM3Rides] = useState([]);
   const [feedbacks, setFeedbacks] = useState([]);
 
   // Experience and charges update state
@@ -26,8 +27,9 @@ export default function DashboardPage() {
 
     // Load cached user immediately for fast render
     const cached = localStorage.getItem('vaygo_user');
+    let parsed = null;
     if (cached) {
-      const parsed = JSON.parse(cached);
+      parsed = JSON.parse(cached);
       setUser(parsed);
       setRates({
         hourly: parsed.pricing?.rate_per_hour || parsed.driver_experience?.hourly_charges || 150,
@@ -52,11 +54,26 @@ export default function DashboardPage() {
     });
 
     // Fetch real driver rides if token exists
-    apiGet('/api/rides/driver').then(({ ok, data }) => {
-      if (ok && data.success) {
-        setRealRides(data.rides.slice(0, 5)); // show top 5
-      }
-    });
+    const role = parsed?.account?.role || parsed?.role;
+    if (role === 'driver_on_demand' || role === 'DRIVER_ON_DEMAND') {
+      apiGet('/api/m3/request/pending').then(({ ok, data }) => {
+        if (ok && data.success) {
+          setRealRides(data.requests.slice(0, 5)); // show top 5 pending
+        }
+      });
+      // Also fetch driver's active requests
+      apiGet('/api/m3/request/driver-requests').then(({ ok, data }) => {
+        if (ok && data.success) {
+          setActiveM3Rides(data.requests);
+        }
+      });
+    } else {
+      apiGet('/api/rides/driver').then(({ ok, data }) => {
+        if (ok && data.success) {
+          setRealRides(data.rides.slice(0, 5)); // show top 5
+        }
+      });
+    }
 
     // Fetch feedbacks
     apiGet('/api/bookings/driver/feedbacks').then(({ ok, data }) => {
@@ -567,6 +584,31 @@ export default function DashboardPage() {
                 </button>
               </div>
 
+              {/* Active Trip Box */}
+              {activeM3Rides.length > 0 && (
+                <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: 24, marginBottom: 24 }}>
+                  <h3 style={{ fontSize: 18, fontWeight: 700, color: '#22d3a0', marginBottom: 16 }}>Your Active Trips</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {activeM3Rides.map((gig, idx) => (
+                      <div key={idx} style={{ padding: 16, borderRadius: 12, background: 'rgba(34,211,160,0.05)', border: '1px solid rgba(34,211,160,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: '#d3e4fe' }}>Passenger: {gig.familyId?.personal_info?.full_name || 'Family'}</div>
+                          <div style={{ fontSize: 12, color: 'rgba(211,228,254,0.45)', marginTop: 4 }}>Phone: {gig.familyId?.personal_info?.phone || 'Hidden'}</div>
+                          <div style={{ fontSize: 12, color: 'rgba(211,228,254,0.45)', marginTop: 4 }}>Route: {gig.pickupLocation} → {gig.dropoffLocation}</div>
+                        </div>
+                        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <span style={{ fontSize: 14, fontWeight: 800, color: '#00dbe7' }}>₹{gig.estimatedPrice}</span>
+                          <button onClick={() => navigate(`/driver-dashboard/m3/navigate/${gig._id}`)}
+                            style={{ padding: '6px 12px', background: 'linear-gradient(135deg,#00dbe7,#00f1fe)', color: '#002022', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                            Resume Trip
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Booking invitations list */}
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: 24 }}>
                 <h3 style={{ fontSize: 18, fontWeight: 700, color: '#d3e4fe', marginBottom: 16 }}>Available Driver-on-Demand Bookings</h3>
@@ -579,15 +621,15 @@ export default function DashboardPage() {
                       realRides.map((gig, idx) => (
                         <div key={idx} style={{ padding: 16, borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <div>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: '#d3e4fe' }}>Gig Request</div>
-                            <div style={{ fontSize: 12, color: 'rgba(211,228,254,0.45)', marginTop: 4 }}>Vehicle: {gig.vehicle || 'Not specified'}</div>
-                            <div style={{ fontSize: 11, color: '#00dbe7', marginTop: 4, fontWeight: 600 }}>{gig.duration || 'Flexible shift'} · {gig.date || 'Today'}</div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: '#d3e4fe' }}>Gig Request: {gig.familyId?.personal_info?.full_name || 'Family'}</div>
+                            <div style={{ fontSize: 12, color: 'rgba(211,228,254,0.45)', marginTop: 4 }}>Route: {gig.pickupLocation} → {gig.dropoffLocation}</div>
+                            <div style={{ fontSize: 11, color: '#00dbe7', marginTop: 4, fontWeight: 600 }}>{gig.durationHours} hrs · {new Date(gig.date).toLocaleDateString()}</div>
                           </div>
                           <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            <span style={{ fontSize: 14, fontWeight: 800, color: '#00dbe7' }}>₹{gig.rate || gig.price || 'Negotiate'}</span>
-                            <button onClick={() => alert(`Invite accepted! Contacting car owner...`)}
+                            <span style={{ fontSize: 14, fontWeight: 800, color: '#00dbe7' }}>₹{gig.estimatedPrice}</span>
+                            <button onClick={() => navigate('/driver-dashboard/m3/dashboard')}
                               style={{ padding: '6px 12px', background: 'linear-gradient(135deg,#00dbe7,#00f1fe)', color: '#002022', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                              Accept Gig
+                              Open Gig Board
                             </button>
                           </div>
                         </div>

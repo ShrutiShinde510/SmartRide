@@ -59,6 +59,25 @@ import ManageRequestsPage from './pages/dashboard/flexible-hire/owner/ManageRequ
 import ActiveHirePage from './pages/dashboard/flexible-hire/owner/ActiveHirePage';
 import RateFamilyPage from './pages/dashboard/flexible-hire/owner/RateFamilyPage';
 
+// Driver on Demand (Model 3) - Family
+import M3PostRequestPage from './pages/dashboard/driver-on-demand/family/PostRequestPage';
+import M3BrowseDriversPage from './pages/dashboard/driver-on-demand/family/BrowseDriversPage';
+import M3PassengerOffersPage from './pages/dashboard/driver-on-demand/family/M3PassengerOffersPage';
+import M3DriverProfilePage from './pages/dashboard/driver-on-demand/family/DriverProfilePage';
+import M3ConfirmBookingPage from './pages/dashboard/driver-on-demand/family/ConfirmBookingPage';
+import M3LiveTrackingPage from './pages/dashboard/driver-on-demand/family/LiveTrackingPage';
+import M3VehicleReturnPage from './pages/dashboard/driver-on-demand/family/VehicleReturnPage';
+import M3FinalPaymentPage from './pages/dashboard/driver-on-demand/family/FinalPaymentPage';
+import M3RateDriverPage from './pages/dashboard/driver-on-demand/family/RateDriverPage';
+
+// Driver on Demand (Model 3) - Driver
+import M3HireSetupPage from './pages/dashboard/driver-on-demand/driver/HireSetupPage';
+import M3HireDashboard from './pages/dashboard/driver-on-demand/driver/HireDashboard';
+import M3NavigateToPickupPage from './pages/dashboard/driver-on-demand/driver/NavigateToPickupPage';
+import M3PreInspectionPage from './pages/dashboard/driver-on-demand/driver/PreInspectionPage';
+import M3ActiveTripPage from './pages/dashboard/driver-on-demand/driver/ActiveTripPage';
+import M3PostInspectionPage from './pages/dashboard/driver-on-demand/driver/PostInspectionPage';
+
 export default function App() {
   return (
     <Routes>
@@ -88,6 +107,14 @@ export default function App() {
         <Route path="owner/requests" element={<ManageRequestsPage />} />
         <Route path="owner/active/:hireId" element={<ActiveHirePage />} />
         <Route path="owner/rate/:hireId" element={<RateFamilyPage />} />
+
+        {/* Driver on Demand (Model 3) Driver Routes */}
+        <Route path="m3/setup" element={<M3HireSetupPage />} />
+        <Route path="m3/dashboard" element={<M3HireDashboard />} />
+        <Route path="m3/navigate/:id" element={<M3NavigateToPickupPage />} />
+        <Route path="m3/inspection/pre/:id" element={<M3PreInspectionPage />} />
+        <Route path="m3/active/:id" element={<M3ActiveTripPage />} />
+        <Route path="m3/inspection/post/:id" element={<M3PostInspectionPage />} />
       </Route>
 
       {/* ── Passenger dashboard (nested routes) ── */}
@@ -122,6 +149,17 @@ export default function App() {
         <Route path="hire/track/:hireId" element={<HireTrackingPage />} />
         <Route path="hire/final/:hireId" element={<FinalPaymentPage />} />
         <Route path="hire/rate/:hireId" element={<RateOwnerPage />} />
+
+        {/* Driver on Demand (Model 3) Family Routes */}
+        <Route path="m3/request" element={<M3PostRequestPage />} />
+        <Route path="m3/drivers" element={<M3BrowseDriversPage />} />
+        <Route path="m3/offers/:id" element={<M3PassengerOffersPage />} />
+        <Route path="m3/driver/:id" element={<M3DriverProfilePage />} />
+        <Route path="m3/booking/confirm/:id" element={<M3ConfirmBookingPage />} />
+        <Route path="m3/track/:id" element={<M3LiveTrackingPage />} />
+        <Route path="m3/return/:id" element={<M3VehicleReturnPage />} />
+        <Route path="m3/payment/:id" element={<M3FinalPaymentPage />} />
+        <Route path="m3/rate/:id" element={<M3RateDriverPage />} />
 
       </Route>
 

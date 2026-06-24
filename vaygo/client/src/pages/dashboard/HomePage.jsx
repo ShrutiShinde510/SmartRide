@@ -43,7 +43,7 @@ export default function HomePage() {
           {[
             { icon: 'schedule',      label: 'Planned Trip',    sub: 'Carpool seats',    path: '/dashboard/search' },
             { icon: 'directions_car', label: 'Flexible Hire',  sub: 'Car + owner',      path: '/dashboard/hire/request' },
-            { icon: 'person_pin',    label: 'Driver on Demand', sub: 'Your own car',    path: '' },
+            { icon: 'person_pin',    label: 'Driver on Demand', sub: 'Your own car',    path: '/dashboard/m3/request' },
           ].map((m, i) => (
             <button key={i} onClick={() => m.path ? navigate(m.path) : alert('Coming soon!')}
               style={{ padding: '14px 10px', borderRadius: 14, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s', color: '#d3e4fe' }}
